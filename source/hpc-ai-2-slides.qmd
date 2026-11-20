@@ -1,0 +1,523 @@
+---
+title: "HPC for AI - Part 2"
+subtitle: "Fine-tuning and using a large language model on Isambard-AI"
+author: "Jean Golding Institute"
+format:
+  revealjs:
+    theme: [default, slides.scss]
+    logo: assets/UoB_RGB_24.png
+    footer: "[Jean Golding Institute](https://www.bristol.ac.uk/golding/) © CC-BY 4.0"
+    slide-number: true
+    code-line-numbers: false
+    highlight-style: github
+    embed-resources: true
+    transition: fade
+    transition-speed: fast
+---
+
+## Today's question {.center}
+
+::: {.big .center}
+A model that only predicts the next word,<br>one GPU and two hours.<br>Can we turn it into a research tool?
+:::
+
+::: notes
+By the end of the session, everyone will have fine-tuned Mistral 7B on one GPU on Isambard-AI, and used it to label about 30,000 UK news headlines.
+:::
+
+## How today works
+
+- Each of you has one GPU on Isambard-AI
+- You'll run a notebook that's already written: read each cell, then run it
+- Half the room trains with **LoRA**, half with **QLoRA**, and we compare the results
+- Training takes about 8 minutes, so that's a good time to ask questions
+- The course notes go through every step, with an optional profiling section at the end
+
+::: notes
+Say which half of the room uses which MODE before anyone starts training.
+:::
+
+## The plan
+
+::: {.flow}
+[Set up]{.step} [→]{.arrow} [Fine-tuning?]{.step} [→]{.arrow} [LoRA and QLoRA]{.step} [→]{.arrow} [Did it work?]{.step}
+:::
+
+::: {.flow}
+[vLLM]{.step} [→]{.arrow} [Prompting]{.step} [→]{.arrow} [Headlines]{.step} [→]{.arrow} [Wrap up]{.step}
+:::
+
+<br>
+
+::: {.muted .center}
+Optional at the end: profiling with Nsight Systems
+:::
+
+# [01]{.section-number} Setup {background-color="#3d0251"}
+
+[How do I get a GPU with the model and data ready?]{.section-question}
+
+## Asking for a GPU
+
+![](assets/jupyterhub-flow.svg){fig-alt="Your browser connects to JupyterHub, which asks the Slurm scheduler for GPUs. Slurm starts JupyterLab on a compute node with the GPUs you asked for, which reads the shared project folder and writes to your own folder." width="100%"}
+
+## Start your session
+
+:::: {.columns}
+::: {.column width="50%"}
+[apps.isambard.ac.uk/aip2-jupyter](https://apps.isambard.ac.uk/aip2-jupyter)
+
+| Field | Choose |
+|---|---|
+| Project | *the course project* |
+| Job duration | *until the end of the course* |
+| Number of GH200s | 1 |
+| Partition | *leave empty* |
+| Reservation | `interactive` |
+:::
+::: {.column width="50%"}
+::: {.bad}
+When your time runs out, the session ends straight away, with no warning. Save regularly.
+:::
+:::
+::::
+
+::: notes
+Share your screen and go slowly. This is where most problems happen: no UNIX username, not in the project, Partition filled in, or an old interactive job still running.
+:::
+
+## Set up the course kernel
+
+In JupyterLab, go to **File → New → Terminal**
+
+```{.bash filename="Terminal"}
+bash $PROJECTDIR/course/kernels/install-kernels.sh
+
+cp $PROJECTDIR/course/hpc-for-ai-2.ipynb ~/
+```
+
+<br>
+
+Reload the page, open your copy of `hpc-for-ai-2.ipynb`, and check the kernel in the top right says **Fine-tuning + Nsight**
+
+## Where things live
+
+| | |
+|---|---|
+| Your results | `$PROJECTDIR/$USER/llm-fine-tuning` |
+| Model | `$PROJECTDIR/course/hf-cache` |
+| Datasets | `$PROJECTDIR/course/alpaca`, `.../headlines` |
+| If you fall behind | `$PROJECTDIR/course/fallback` |
+
+<br>
+
+::: {.muted}
+The model and data were downloaded before the course: the compute nodes can't reach the internet
+:::
+
+::: {.bad}
+None of these are backed up
+:::
+
+# [02]{.section-number} What is fine-tuning? {background-color="#3d0251"}
+
+[What does a base model do, and what will fine-tuning change?]{.section-question}
+
+## A language model predicts the next token
+
+:::: {.columns}
+::: {.column width="55%"}
+Text goes in as **tokens**: words or pieces of words
+
+The model outputs a probability for every possible next token
+
+To generate text, pick a token, add it to the input, and run again
+:::
+::: {.column width="45%"}
+::: {.big .center}
+7.3 billion
+:::
+::: {.center}
+parameters in Mistral 7B
+:::
+:::
+::::
+
+<br>
+
+::: {.center}
+A base model only **continues** text. Answering a question is not a separate skill it has.
+:::
+
+## Training, fine-tuning or RAG?
+
+| | Training from scratch | Fine-tuning | RAG |
+|---|---|---|---|
+| What changes | All the weights | Some weights of a trained model | No weights: text added to the prompt |
+| Data | Vast | Hundreds to thousands of labelled examples | Your documents |
+| Compute | A very large cluster | One GPU, minutes to hours | Mostly at question time |
+| Good for | New foundation models | A format, style or narrow skill | Facts the model doesn't have |
+
+::: {.good}
+Try prompting first. Use RAG for missing facts. Fine-tune for a format, style or skill.
+:::
+
+## What can the base model do?
+
+```{.python filename="hpc-for-ai-2.ipynb"}
+print(complete(base_model, "The capital of France is"))
+print(complete(base_model, "What is the capital of France?", max_new_tokens=80))
+```
+
+<br>
+
+::: {.center}
+Look at how each answer **ends**. Does it stop, or carry on and write a new `### Instruction:` of its own?
+:::
+
+::: notes
+Ask the room what the base model did with the direct question.
+:::
+
+# [03]{.section-number} Training with LoRA and QLoRA {background-color="#3d0251"}
+
+[How do you fine-tune a 7-billion-parameter model on one GPU?]{.section-question}
+
+## Full fine-tuning doesn't fit
+
+::: {.cards}
+::: {.card}
+**16 bytes per parameter**
+Weights, gradients, a 32-bit master copy and two optimiser values
+:::
+::: {.card}
+**× 7.3 billion**
+About 117 GB
+:::
+::: {.card}
+**One GH200**
+96 GB
+:::
+:::
+
+## LoRA and QLoRA
+
+:::: {.columns}
+::: {.column width="50%"}
+**LoRA**
+Freeze the model. Train two small matrices `A` and `B` beside each layer:
+
+`W + (alpha / r) × B A`
+
+With `r = 16`, about 128 times fewer values than a 4096 × 4096 layer
+:::
+::: {.column width="50%"}
+**QLoRA**
+The same, and also store the frozen weights in **4 bits** instead of 16
+
+Each weight is unpacked at every use: less memory, more compute
+:::
+::::
+
+<br>
+
+::: {.muted .center}
+Only about 42 million of 7.3 billion parameters train: 0.58%
+:::
+
+## Train
+
+```{.python filename="hpc-for-ai-2.ipynb"}
+trainer = SFTTrainer(model=MODEL_ID, args=training_args, train_dataset=dataset,
+                     processing_class=tokenizer, peft_config=lora_config)
+
+with torch.cuda.nvtx.range("train"):
+    result = trainer.train()
+```
+
+<br>
+
+::: {.center}
+About 8 minutes. The loss is printed every 10 steps and should fall.
+:::
+
+::: notes
+While it trains, talk through LoRA and QLoRA, and what the room's results table will show. Anyone behind or whose training fails sets USE_FALLBACK = True.
+:::
+
+## LoRA vs QLoRA
+
+| | LoRA | QLoRA |
+|---|---|---|
+| Training time | 8.0 min | 8.8 min |
+| Peak GPU memory | 16.1 GiB | 5.8 GiB |
+| Final loss | 0.903 | 0.908 |
+
+<br>
+
+::: {.good}
+A profile shows why: QLoRA's top GPU kernel unpacks 4-bit weights (18% of kernel time), and LoRA doesn't run it. About 10% more time for about 64% less memory.
+:::
+
+::: {.center}
+LoRA when the model fits. QLoRA when it doesn't.
+:::
+
+::: notes
+Re-run the whole room's results cell and compare it with this table.
+:::
+
+# [04]{.section-number} Did it work? {background-color="#3d0251"}
+
+[Has the model learned to answer?]{.section-question}
+
+## Base vs fine-tuned
+
+```{.python filename="hpc-for-ai-2.ipynb"}
+for question in QUESTIONS:
+    with model.disable_adapter():
+        print("Q:", question, "\nBASE MODEL:", ask(model, question))
+    print("\nFINE-TUNED MODEL:", ask(model, question))
+```
+
+::: {.cards}
+::: {.card}
+**Seen in training**
+The first question is Alpaca's first example
+:::
+::: {.card}
+**Unseen**
+The others show whether it learned to answer in general
+:::
+:::
+
+::: {.muted .center}
+Falling loss alone doesn't prove a model is better
+:::
+
+## Your turn ✍️ {background-color="#f4eef8"}
+
+::: {.your-turn}
+Add a question of your own to `QUESTIONS` and ask both models.
+
+Can you find a question where the fine-tuned model is clearly **worse**?
+
+It trained on 3,200 examples for 8 minutes: it learned a format, not new knowledge.
+:::
+
+# [05]{.section-number} Faster inference with vLLM {background-color="#3d0251"}
+
+[How do we get answers fast enough to use in a program?]{.section-question}
+
+## vLLM's two tricks
+
+::: {.cards}
+::: {.card}
+**Batching**
+Work on all the questions at once: 32 questions become one matrix with 32 rows
+:::
+::: {.card}
+**CUDA graphs**
+Record the GPU work for one step once, then replay it, instead of Python launching every kernel
+:::
+:::
+
+```{.python filename="hpc-for-ai-2.ipynb"}
+llm = LLM(model=MODEL_ID, enable_lora=True, max_lora_rank=16,
+          max_model_len=1024, gpu_memory_utilization=0.8)
+```
+
+::: notes
+Run the vLLM start-up cell just before the break: it takes a minute or two.
+:::
+
+## Break {.center}
+
+::: {.big .center}
+15 minutes
+:::
+
+::: {.center}
+Start the vLLM cell before you go
+:::
+
+## Same questions, much faster
+
+```{.python filename="hpc-for-ai-2.ipynb"}
+base_answers = llm.generate(prompts, settings)
+tuned_answers = llm.generate(prompts, settings, lora_request=adapter)
+```
+
+<br>
+
+::: {.good}
+Most of the gap is not faster arithmetic. With Transformers, Python launches every kernel, one question and one token at a time, and the GPU mostly waits.
+:::
+
+# [06]{.section-number} Prompting from a program {background-color="#3d0251"}
+
+[How do you use a model on a list of inputs, and trust what comes back?]{.section-question}
+
+## One instruction, many inputs
+
+```{.python filename="hpc-for-ai-2.ipynb"}
+def run(instruction, inputs, settings=loop_settings, lora_request=adapter):
+    """Ask one instruction for each input, all in one batch."""
+    prompts = [TEMPLATE_WITH_INPUT.format(instruction=instruction, input=text) for text in inputs]
+    outputs = llm.generate(prompts, settings, lora_request=lora_request)
+    return [out.outputs[0].text.strip() for out in outputs]
+```
+
+::: {.center}
+Give it the **whole list** at once, so vLLM can batch it
+:::
+
+## Check every answer
+
+::: {.flow}
+[Clean]{.step} [→]{.arrow} [Check]{.step} [→]{.arrow} [Retry failures]{.step} [→]{.arrow} [Give up: `None`]{.step .light}
+:::
+
+<br>
+
+::: {.cards}
+::: {.card}
+**Clean**
+Lower case, first word, no punctuation
+:::
+::: {.card}
+**Retry**
+Only the failures, with `temperature=0.7`
+:::
+::: {.card}
+**Give up**
+Return `None` rather than guess, so you can count failures
+:::
+:::
+
+# [07]{.section-number} A research question {background-color="#3d0251"}
+
+[Has each UK news outlet given more or less of its front page to the environment?]{.section-question}
+
+## UK front pages
+
+:::: {.columns}
+::: {.column width="55%"}
+- The lead headline of each UK outlet, from [The Hear](https://www.thehear.org)
+- Sampled every 6 hours, September 2024 to October 2026
+- Our fine-tuned model is the classifier: "about the environment? yes or no"
+:::
+::: {.column width="45%"}
+::: {.big .center}
+29,823
+:::
+::: {.center}
+headlines
+:::
+:::
+::::
+
+## One at a time, or all at once?
+
+| | One at a time | All at once |
+|---|---|---|
+| Headlines | 50 | 29,823 |
+| Time per headline | 32 ms | 1.7 ms |
+
+<br>
+
+::: {.good}
+Gather the inputs into a list and classify them in one call
+:::
+
+## Your turn ✍️ {background-color="#f4eef8"}
+
+::: {.your-turn}
+1. Look at the plot. Which outlets lead most often with the environment?
+2. Check the random sample by eye: are they really about the environment?
+3. Change the definition in `CLASSIFY`, or use the base model (`lora_request=None`). How many labels change, and which do you trust more?
+:::
+
+# [08]{.section-number} Wrapping up {background-color="#3d0251"}
+
+[How far can we trust this?]{.section-question}
+
+## How far can we trust this?
+
+::: {.cards}
+::: {.card}
+**The classifier**
+It learned a format, never what counts as "the environment"
+:::
+::: {.card}
+**Lead stories only**
+Not everything each outlet published
+:::
+::: {.card}
+**Partial years**
+2024 starts in September, 2026 ends in October
+:::
+::: {.card}
+**Sampling**
+Every 6 hours misses short-lived leads
+:::
+:::
+
+## Using a shared supercomputer well
+
+::: {.good}
+Save regularly, and check your time left with `squeue` (the command is in the notes)
+:::
+
+::: {.good}
+Share one copy of large model files in the project folder
+:::
+
+::: {.good}
+Nothing on Isambard-AI is backed up: copy anything important somewhere safe
+:::
+
+## Optional: profiling with Nsight Systems
+
+:::: {.columns}
+::: {.column width="50%"}
+A profile records every GPU kernel
+
+**Kernel time ÷ elapsed time** = how busy the GPU was
+:::
+::: {.column width="50%"}
+| | GPU busy |
+|---|---|
+| Transformers `generate()` | 12% |
+| vLLM | 73% |
+| Headlines, all at once | 98% |
+:::
+::::
+
+<br>
+
+::: {.center}
+Section 9 of the notes: record your own, or read the supplied reports
+:::
+
+## Where to go next
+
+- [Isambard-AI LLM tutorials](https://docs.isambard.ac.uk/user-documentation/tutorials/llms/fine-tuning/)
+- [Introduction to HPC](https://bristol-training.github.io/intro-hpc/): scripts, batch jobs and Slurm
+- [Harnessing AI](https://bristol-training.github.io/harnessing-ai/): responsible use of language models
+- The TRL, PEFT and vLLM documentation
+- [Applying for Isambard-AI access](https://docs.isambard.ac.uk/access/)
+
+## Before you go {.center}
+
+::: {.big .center}
+Please stop your server
+:::
+
+::: {.center}
+File → Hub Control Panel → **Stop My Server**
+:::
+
+::: notes
+Check everyone has stopped their server, and share the feedback form link.
+:::
