@@ -1,7 +1,7 @@
 #!/bin/bash
 # One-screen summary of an Nsight report: labelled ranges, kernel count, total kernel time,
 # and the longest kernels. Give the report's name; it looks in this folder, then in yours:
-#   bash /projects/b6bf/course/kernels/profile-summary.sh generate-hf
+#   bash $PROJECTDIR/hpc-for-ai-2/setup/profile-summary.sh generate-hf
 set -euo pipefail
 NSYS=$(command -v nsys) || { echo "Run first: module load cudatoolkit/24.11_12.6"; exit 1; }
 R=${1:?Give a report name, for example: bash $0 generate-hf}

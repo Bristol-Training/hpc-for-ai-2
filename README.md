@@ -180,7 +180,7 @@ See the **Instructor setup** section at the end of the instructor notes. In shor
 
 1. The course runs in the training project, using the `interactive` reservation. Check with BriCS whether the project has a GPU limit.
 2. Build the course kernel and download the model and data with `setup/build-environment.sh`, in a 1-GPU job (its final check needs a GPU). It also writes `kernels/install-kernels.sh`, which attendees run once to add the **Fine-tuning + Nsight** kernel to JupyterLab.
-3. Copy the notebook, the headlines dataset and a trained fallback adapter for each mode into the course folder, then do a full dry run in JupyterHub.
+3. Clone this repository into `$PROJECTDIR/hpc-for-ai-2` (not inside the course folder). Copy the headlines dataset and a trained fallback adapter for each mode into the course folder, then do a full dry run in JupyterHub.
 
 ## Credits
 

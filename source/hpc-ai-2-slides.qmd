@@ -93,7 +93,7 @@ In JupyterLab, go to **File → New → Terminal**
 ```{.bash filename="Terminal"}
 bash $PROJECTDIR/course/kernels/install-kernels.sh
 
-cp $PROJECTDIR/course/hpc-for-ai-2.ipynb ~/
+cp $PROJECTDIR/hpc-for-ai-2/notebooks/hpc-for-ai-2.ipynb ~/
 ```
 
 <br>

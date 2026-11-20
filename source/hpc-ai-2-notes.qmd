@@ -195,7 +195,7 @@ The *kernel* is the Python environment your notebook runs in. We've made one esp
 2. **Work on your own copy of the notebook.** If everyone saves the shared one, each save overwrites someone else's.
 
     ```{.bash filename="Terminal"}
-    cp $PROJECTDIR/course/hpc-for-ai-2.ipynb ~/
+    cp $PROJECTDIR/hpc-for-ai-2/notebooks/hpc-for-ai-2.ipynb ~/
     ```
 
 3. **Check the kernel name** at the top right of the notebook says **Fine-tuning + Nsight**. Any other kernel gives errors such as `No module named 'datasets'`.
@@ -515,7 +515,7 @@ with open(f"{OUTPUT_DIR}/stats.json", "w") as f:
 stats
 ```
 
-Save the adapter. This writes only the small LoRA matrices, about 84 MB, not a copy of the 14.5 GB model. Using it later means loading the base model and attaching the adapter, as we do below.
+Save the adapter. This writes only the small LoRA matrices, 84 MB for QLoRA or 168 MB for LoRA, not a copy of the 14.5 GB model. Using it later means loading the base model and attaching the adapter, as we do below.
 
 **Behind, or training failed?** Set `USE_FALLBACK = True` in the next cell, and carry on from there with a trained adapter we prepared earlier.
 
@@ -824,7 +824,7 @@ Answers will vary. A `None` means the model kept answering with a word you didn'
 
 Has each UK news outlet given more or less of its front page to the environment over the last two years?
 
-The data comes from [The Hear](https://www.thehear.org), a nonprofit archive of the lead headline on each UK outlet's front page. We sampled its archive every 6 hours from September 2024 to October 2026 and saved the result before the session. The scripts are in `$PROJECTDIR/course/headlines/`.
+The data comes from [The Hear](https://www.thehear.org), a nonprofit archive of the lead headline on each UK outlet's front page. We sampled its archive every 6 hours from September 2024 to October 2026 and saved the result before the session. The scripts are in `$PROJECTDIR/hpc-for-ai-2/setup/headlines/`.
 
 The file is a nested dictionary, `data[paper][year][title]`. We flatten it into one list.
 
@@ -1076,8 +1076,8 @@ That is the raw table, longest kernels first (`q` quits). Names like `nvjet_...`
 This course script gives a shorter summary. Compare the two modes:
 
 ```{.bash filename="Terminal"}
-bash $PROJECTDIR/course/kernels/profile-summary.sh slice-qlora
-bash $PROJECTDIR/course/kernels/profile-summary.sh slice-lora
+bash $PROJECTDIR/hpc-for-ai-2/setup/profile-summary.sh slice-qlora
+bash $PROJECTDIR/hpc-for-ai-2/setup/profile-summary.sh slice-lora
 ```
 
 | | LoRA | QLoRA |
@@ -1093,8 +1093,8 @@ The top kernel for QLoRA unpacks 4-bit weights, and LoRA doesn't run it at all: 
 Same questions, same adapter. Compare the two reports:
 
 ```{.bash filename="Terminal"}
-bash $PROJECTDIR/course/kernels/profile-summary.sh generate-hf
-bash $PROJECTDIR/course/kernels/profile-summary.sh generate-vllm
+bash $PROJECTDIR/hpc-for-ai-2/setup/profile-summary.sh generate-hf
+bash $PROJECTDIR/hpc-for-ai-2/setup/profile-summary.sh generate-vllm
 ```
 
 **What we measured:**
@@ -1113,8 +1113,8 @@ vLLM attacks exactly that: batching means fewer steps in total, and replaying CU
 ## Why is batching faster? Read the profiles
 
 ```{.bash filename="Terminal"}
-bash $PROJECTDIR/course/kernels/profile-summary.sh classify-loop
-bash $PROJECTDIR/course/kernels/profile-summary.sh classify-batch
+bash $PROJECTDIR/hpc-for-ai-2/setup/profile-summary.sh classify-loop
+bash $PROJECTDIR/hpc-for-ai-2/setup/profile-summary.sh classify-batch
 ```
 
 **What we measured:**
@@ -1202,9 +1202,10 @@ $PROJECTDIR/course/
 ├── hf-cache/               Mistral 7B v0.3 and the Alpaca download
 ├── alpaca/train.parquet    Alpaca, saved for offline loading
 ├── headlines/              uk_headlines.json (see setup/headlines/)
-├── fallback/               lora/ and qlora/ trained adapters with stats.json, and reports/
-└── hpc-for-ai-2.ipynb      the course notebook
+└── fallback/               lora/ and qlora/ trained adapters with stats.json, and reports/
 ```
+
+This repository is cloned separately, into `$PROJECTDIR/hpc-for-ai-2`, not inside the course folder. Participants copy the notebook from it and run `setup/profile-summary.sh` from it.
 
 Build the environment, download the model and dataset, and create the kernel, in a 1-GPU job (the import check at the end needs a GPU).
 
@@ -1214,7 +1215,7 @@ sbatch --nodes=1 --gpus=1 --time=01:00:00 --output=setup-%j.out setup/build-envi
 
 Then:
 
-- **Notebook:** `cp notebooks/hpc-for-ai-2.ipynb $PROJECTDIR/course/`.
+- **Course repository:** `git clone https://github.com/Bristol-Training/hpc-for-ai-2.git $PROJECTDIR/hpc-for-ai-2`, then `chmod -R g+rX,g-w $PROJECTDIR/hpc-for-ai-2`. Keep it on the branch you are teaching from.
 - **Headlines:** put `uk_headlines.json` in `$PROJECTDIR/course/headlines/` (see `setup/headlines/README.md`).
 - **Fallback adapters:** train once in each mode and copy `sft-output/{lora,qlora}/final` and `stats.json` into `fallback/lora/` and `fallback/qlora/`.
 - **Supplied reports:** record the six reports in the optional section during a dry run, and copy them into `fallback/reports/`.
