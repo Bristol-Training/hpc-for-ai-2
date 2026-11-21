@@ -34,6 +34,7 @@ hpc-for-ai-2/
 ├── setup/
 │   ├── build-environment.sh  builds the shared course kernel, model and data on Isambard-AI
 │   ├── profile-summary.sh    one-screen summary of an Nsight report (optional section)
+│   ├── dry-run/              runs the whole notebook as a batch job, and makes the shared fallback/ folder
 │   └── headlines/            scripts that collected the UK headlines dataset
 ├── source/               what you edit
 │   ├── hpc-ai-2-notes.qmd    the course notes (one document covering every section)
@@ -180,7 +181,7 @@ See the **Instructor setup** section at the end of the instructor notes. In shor
 
 1. The course runs in the training project, using the `interactive` reservation. Check with BriCS whether the project has a GPU limit.
 2. Build the course kernel and download the model and data with `setup/build-environment.sh`, in a 1-GPU job (its final check needs a GPU). It also writes `kernels/install-kernels.sh`, which attendees run once to add the **Fine-tuning + Nsight** kernel to JupyterLab.
-3. Clone this repository into `$PROJECTDIR/hpc-for-ai-2` (not inside the course folder). Copy the headlines dataset and a trained fallback adapter for each mode into the course folder, then do a full dry run in JupyterHub.
+3. Clone this repository into `$PROJECTDIR/hpc-for-ai-2` (not inside the course folder), and add the headlines dataset to the course folder. Make the fallback adapters and supplied profiles with `setup/dry-run/dry-run.sbatch <mode> publish`, once in each mode, then do a full dry run in JupyterHub.
 
 ## Credits
 

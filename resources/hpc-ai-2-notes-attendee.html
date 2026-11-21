@@ -2531,7 +2531,7 @@ src: url(data:font/ttf;base64,AAEAAAAOAIAAAwBgQkFTRVT/bgMAAAFoAAAARkdERUaZK5kzAA
 <div class="code-with-filename-file">
 <pre><strong>Terminal</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4" data-filename="Terminal"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cp</span> <span class="va">$PROJECTDIR</span>/course/hpc-for-ai-2.ipynb ~/</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4" data-filename="Terminal"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cp</span> <span class="va">$PROJECTDIR</span>/hpc-for-ai-2/notebooks/hpc-for-ai-2.ipynb ~/</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div></li>
 <li><p><strong>Check the kernel name</strong> at the top right of the notebook says <strong>Fine-tuning + Nsight</strong>. Any other kernel gives errors such as <code>No module named &#39;datasets&#39;</code>.</p></li>
 <li><p><strong>Run one notebook at a time on this kernel.</strong> Only the first one you open can be profiled in the optional section 9. Any others still run, but <code>nsys</code> can’t record them.</p></li>
@@ -2995,7 +2995,7 @@ src: url(data:font/ttf;base64,AAEAAAAOAIAAAwBgQkFTRVT/bgMAAAFoAAAARkdERUaZK5kzAA
 <span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>    json.dump(stats, f)</span>
 <span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>stats</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<p>Save the adapter. This writes only the small LoRA matrices, about 84 MB, not a copy of the 14.5 GB model. Using it later means loading the base model and attaching the adapter, as we do below.</p>
+<p>Save the adapter. This writes only the small LoRA matrices, 84 MB for QLoRA or 168 MB for LoRA, not a copy of the 14.5 GB model. Using it later means loading the base model and attaching the adapter, as we do below.</p>
 <p><strong>Behind, or training failed?</strong> Set <code>USE_FALLBACK = True</code> in the next cell, and carry on from there with a trained adapter we prepared earlier.</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
@@ -3432,7 +3432,7 @@ src: url(data:font/ttf;base64,AAEAAAAOAIAAAwBgQkFTRVT/bgMAAAFoAAAARkdERUaZK5kzAA
 <section id="the-environment-on-uk-front-pages" class="level2" data-number="7.1">
 <h2 data-number="7.1" class="anchored" data-anchor-id="the-environment-on-uk-front-pages"><span class="header-section-number">7.1</span> The environment on UK front pages</h2>
 <p>Has each UK news outlet given more or less of its front page to the environment over the last two years?</p>
-<p>The data comes from <a href="https://www.thehear.org">The Hear</a>, a nonprofit archive of the lead headline on each UK outlet’s front page. We sampled its archive every 6 hours from September 2024 to October 2026 and saved the result before the session. The scripts are in <code>$PROJECTDIR/course/headlines/</code>.</p>
+<p>The data comes from <a href="https://www.thehear.org">The Hear</a>, a nonprofit archive of the lead headline on each UK outlet’s front page. We sampled its archive every 6 hours from September 2024 to October 2026 and saved the result before the session. The scripts are in <code>$PROJECTDIR/hpc-for-ai-2/setup/headlines/</code>.</p>
 <p>The file is a nested dictionary, <code>data[paper][year][title]</code>. We flatten it into one list.</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
@@ -3757,8 +3757,8 @@ src: url(data:font/ttf;base64,AAEAAAAOAIAAAwBgQkFTRVT/bgMAAAFoAAAARkdERUaZK5kzAA
 <div class="code-with-filename-file">
 <pre><strong>Terminal</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb46" data-filename="Terminal"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> <span class="va">$PROJECTDIR</span>/course/kernels/profile-summary.sh slice-qlora</span>
-<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> <span class="va">$PROJECTDIR</span>/course/kernels/profile-summary.sh slice-lora</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb46" data-filename="Terminal"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> <span class="va">$PROJECTDIR</span>/hpc-for-ai-2/setup/profile-summary.sh slice-qlora</span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> <span class="va">$PROJECTDIR</span>/hpc-for-ai-2/setup/profile-summary.sh slice-lora</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <table class="caption-top table">
 <colgroup>
@@ -3791,8 +3791,8 @@ src: url(data:font/ttf;base64,AAEAAAAOAIAAAwBgQkFTRVT/bgMAAAFoAAAARkdERUaZK5kzAA
 <div class="code-with-filename-file">
 <pre><strong>Terminal</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb47" data-filename="Terminal"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> <span class="va">$PROJECTDIR</span>/course/kernels/profile-summary.sh generate-hf</span>
-<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> <span class="va">$PROJECTDIR</span>/course/kernels/profile-summary.sh generate-vllm</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb47" data-filename="Terminal"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> <span class="va">$PROJECTDIR</span>/hpc-for-ai-2/setup/profile-summary.sh generate-hf</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> <span class="va">$PROJECTDIR</span>/hpc-for-ai-2/setup/profile-summary.sh generate-vllm</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p><strong>What we measured:</strong></p>
 <table class="caption-top table">
@@ -3835,8 +3835,8 @@ src: url(data:font/ttf;base64,AAEAAAAOAIAAAwBgQkFTRVT/bgMAAAFoAAAARkdERUaZK5kzAA
 <div class="code-with-filename-file">
 <pre><strong>Terminal</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb48" data-filename="Terminal"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> <span class="va">$PROJECTDIR</span>/course/kernels/profile-summary.sh classify-loop</span>
-<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> <span class="va">$PROJECTDIR</span>/course/kernels/profile-summary.sh classify-batch</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb48" data-filename="Terminal"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> <span class="va">$PROJECTDIR</span>/hpc-for-ai-2/setup/profile-summary.sh classify-loop</span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> <span class="va">$PROJECTDIR</span>/hpc-for-ai-2/setup/profile-summary.sh classify-batch</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p><strong>What we measured:</strong></p>
 <table class="caption-top table">

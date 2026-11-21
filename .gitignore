@@ -12,3 +12,6 @@ source/*.html
 
 # Ruff
 .ruff_cache/
+
+# Dry-run job logs (setup/dry-run/dry-run.sbatch)
+dry-run-*.out

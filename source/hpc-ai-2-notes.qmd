@@ -1217,13 +1217,19 @@ Then:
 
 - **Course repository:** `git clone https://github.com/Bristol-Training/hpc-for-ai-2.git $PROJECTDIR/hpc-for-ai-2`, then `chmod -R g+rX,g-w $PROJECTDIR/hpc-for-ai-2`. Keep it on the branch you are teaching from.
 - **Headlines:** put `uk_headlines.json` in `$PROJECTDIR/course/headlines/` (see `setup/headlines/README.md`).
-- **Fallback adapters:** train once in each mode and copy `sft-output/{lora,qlora}/final` and `stats.json` into `fallback/lora/` and `fallback/qlora/`.
-- **Supplied reports:** record the six reports in the optional section during a dry run, and copy them into `fallback/reports/`.
+- **Fallback adapters and supplied reports:** `setup/dry-run/dry-run.sbatch` runs the whole notebook as a participant would, on the course kernel, and records the six reports for section 9. With `publish`, it copies the run's adapter, `stats.json` and reports into `fallback/`. Run it from the top of the repository, once in each mode (each takes about 15 minutes):
+
+    ```{.bash filename="Terminal (login node)"}
+    sbatch --reservation=interactive setup/dry-run/dry-run.sbatch qlora publish
+    sbatch --reservation=interactive setup/dry-run/dry-run.sbatch lora publish
+    ```
+
+    Only one job can run in the `interactive` reservation at a time, so submit the second when the first has finished. Re-run both whenever the training settings change, so the fallback matches the notebook.
 - **Permissions:** `chmod -R g+rX,g-w $PROJECTDIR/course`. Participants' own folders are `$PROJECTDIR/$USER`.
 
 **3. Dry run (essential)**
 
-Run the whole notebook in a JupyterHub session with 1 GH200, once in each mode, and check:
+Run the whole notebook in a JupyterHub session with 1 GH200, once in each mode, and check the points below. `setup/dry-run/dry-run.sbatch` without `publish` runs the same checks as a batch job; add `fallback` after the mode to test the fallback path.
 
 - [x] Training time: LoRA 8.0 min, QLoRA 8.8 min. Attaching Nsight costs a little: the same run took 7.6 min without it.
 - [x] Peak memory and final loss: LoRA 16.1 GiB, 0.903; QLoRA 5.8 GiB, 0.908.
