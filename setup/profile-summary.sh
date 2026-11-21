@@ -6,7 +6,7 @@ set -euo pipefail
 NSYS=$(command -v nsys) || { echo "Run first: module load cudatoolkit/24.11_12.6"; exit 1; }
 R=${1:?Give a report name, for example: bash $0 generate-hf}
 R=${R%.nsys-rep}
-W=/projects/b6bf/${USER}/llm-fine-tuning
+W=${PROJECTDIR:?PROJECTDIR is not set}/${USER}/llm-fine-tuning
 if [ ! -f "${R}.nsys-rep" ]; then
   if [ -f "${W}/${R}.nsys-rep" ]; then
     R="${W}/${R}"

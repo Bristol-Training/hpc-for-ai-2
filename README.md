@@ -33,6 +33,7 @@ hpc-for-ai-2/
 │   └── hpc-for-ai-2.ipynb    the notebook attendees run on Isambard-AI
 ├── setup/                instructor setup: see setup/README.md
 │   ├── README.md             the instructor setup checklist
+│   ├── setup-all.sh          submits the build and both dry runs in one go
 │   ├── build-environment.sh  builds the kernel, model and data in data/
 │   ├── profile-summary.sh    one-screen summary of an Nsight report (optional section)
 │   ├── dry-run/              runs the whole notebook as a batch job, and makes data/fallback/

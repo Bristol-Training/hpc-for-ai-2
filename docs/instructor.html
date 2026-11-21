@@ -2657,7 +2657,7 @@ src: url(data:font/ttf;base64,AAEAAAAOAIAAAwBgQkFTRVT/bgMAAAFoAAAARkdERUaZK5kzAA
 </tr>
 </tbody>
 </table>
-<p>The compute nodes can’t connect to the internet, so the model and datasets were downloaded before the course. You can read the shared folder but not change it.</p>
+<p>The model and datasets were downloaded before the course, so nobody has to download 28 GB on the day, and the kernel only reads the shared copy. You can read the shared folder but not change it.</p>
 </section>
 <section id="choose-how-to-train" class="level2" data-number="1.4">
 <h2 data-number="1.4" class="anchored" data-anchor-id="choose-how-to-train"><span class="header-section-number">1.4</span> Choose how to train</h2>
@@ -4274,7 +4274,7 @@ src: url(data:font/ttf;base64,AAEAAAAOAIAAAwBgQkFTRVT/bgMAAAFoAAAARkdERUaZK5kzAA
 <p><code>git clean -xdf</code>, or deleting and re-cloning the repository, deletes <code>data/</code> and everything in it. Update the course with <code>git pull</code>.</p>
 </div>
 </div>
-<p>Do these in order, from the top of the repository, over SSH on a login node. Each job runs in the <code>interactive</code> reservation, which allows one job per person at a time, so submit each when the one before has finished. <code>setup/README.md</code> has the same steps as a checklist.</p>
+<p>Do these in order, from the top of the repository, over SSH on a login node. Each job runs in the <code>interactive</code> reservation, which allows one job per person at a time, so submit each when the one before has finished. <code>setup/README.md</code> has the same steps as a checklist. Once the headlines file is in place, <code>bash setup/setup-all.sh</code> does steps 2, 4 and 5 in a single job.</p>
 <ol type="1">
 <li><p><strong>Clone the repository</strong> and let the project read it:</p>
 <div class="code-with-filename">

@@ -23,9 +23,9 @@ set -euo pipefail
 # ---- Edit these -------------------------------------------------------------
 # The shared data folder: data/ in the repository this job was submitted from.
 DATA=${DATA:-${SLURM_SUBMIT_DIR:-$PWD}/data}
-# Participants' own folders. Fixed rather than $PROJECTDIR, which points elsewhere for
-# anyone whose default project is not b6bf.
-USER_ROOT=/projects/b6bf
+# Participants' own folders go in the course project's folder: $PROJECTDIR/$USER.
+# Run this from your account in the course project, so $PROJECTDIR is that project.
+USER_ROOT=${USER_ROOT:-${PROJECTDIR:?PROJECTDIR is not set: run this on Isambard-AI}}
 MODEL_ID=mistralai/Mistral-7B-v0.3
 # -----------------------------------------------------------------------------
 
@@ -65,9 +65,10 @@ print('bitsandbytes', bitsandbytes.__version__, '| vllm', vllm.__version__)
 
 # 2. Pre-download the model and the dataset into the shared, read-only course folder,
 #    so nobody downloads anything on the day. Both are ungated: no Hugging Face login.
-#    Mistral also ships its weights in a second, original format: skip that copy.
+#    The whole repository, including the original-format copy of the weights: vLLM refuses
+#    to load an offline snapshot with any file missing.
 export HF_HUB_CACHE="${DATA}/hf-cache"
-hf download "${MODEL_ID}" --exclude "consolidated*"
+hf download "${MODEL_ID}"
 hf download tatsu-lab/alpaca --repo-type dataset
 
 # Offline, `datasets` cannot find a Hub dataset by name for anyone whose own datasets
@@ -132,7 +133,7 @@ export CXX=/usr/bin/g++-13
 # Keep vLLM's compiled-kernel cache personal, since the shared folder is read-only.
 export VLLM_CACHE_ROOT="${USER_ROOT}/\${USER}/.cache/vllm"
 
-# Only one kernel per person and node can own the Nsight session "nb-${USER}". The lock
+# Only one kernel per person and node can own the Nsight session "nb-\${USER}". The lock
 # and the owner's PID live in this node's /tmp, so a second notebook can tell whether
 # the owner is still running.
 LOCK="/tmp/nsys-nb-\${USER}.lock"

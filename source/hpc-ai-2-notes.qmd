@@ -211,7 +211,7 @@ The *kernel* is the Python environment your notebook runs in. We've made one esp
 | Datasets | `$PROJECTDIR/hpc-for-ai-2/data/alpaca` and `$PROJECTDIR/hpc-for-ai-2/data/headlines` |
 | A trained adapter and example profiles, in case you fall behind | `$PROJECTDIR/hpc-for-ai-2/data/fallback` |
 
-The compute nodes can't connect to the internet, so the model and datasets were downloaded before the course. You can read the shared folder but not change it.
+The model and datasets were downloaded before the course, so nobody has to download 28 GB on the day, and the kernel only reads the shared copy. You can read the shared folder but not change it.
 
 ## Choose how to train
 
@@ -1229,7 +1229,7 @@ $PROJECTDIR/hpc-for-ai-2/
 `git clean -xdf`, or deleting and re-cloning the repository, deletes `data/` and everything in it. Update the course with `git pull`.
 :::
 
-Do these in order, from the top of the repository, over SSH on a login node. Each job runs in the `interactive` reservation, which allows one job per person at a time, so submit each when the one before has finished. `setup/README.md` has the same steps as a checklist.
+Do these in order, from the top of the repository, over SSH on a login node. Each job runs in the `interactive` reservation, which allows one job per person at a time, so submit each when the one before has finished. `setup/README.md` has the same steps as a checklist. Once the headlines file is in place, `bash setup/setup-all.sh` does steps 2, 4 and 5 in a single job.
 
 1. **Clone the repository** and let the project read it:
 
