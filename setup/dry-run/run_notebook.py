@@ -2,7 +2,7 @@
 
 Every code cell runs in order on the course kernel (Fine-tuning + Nsight), and the
 notebook's nsys commands run from a separate login shell, like the JupyterHub terminal,
-recording the six reports used in section 9. Saves an executed copy of the notebook in
+recording the six reports used in section 10. Saves an executed copy of the notebook in
 your WORK folder and prints each cell's time.
 
     python run_notebook.py <qlora|lora> [fallback]

@@ -15,36 +15,14 @@ format:
     transition-speed: fast
 ---
 
-## Today's question {.center}
-
-::: {.big .center}
-A model that only predicts the next word,<br>one GPU and two hours.<br>Can we turn it into a research tool?
-:::
-
-::: notes
-By the end of the session, everyone will have fine-tuned Mistral 7B on one GPU on Isambard-AI, and used it to label about 30,000 UK news headlines.
-:::
-
-## How today works
-
-- Each of you has one GPU on Isambard-AI
-- You'll run a notebook that's already written: read each cell, then run it
-- Half the room trains with **LoRA**, half with **QLoRA**, and we compare the results
-- Training takes about 8 minutes, so that's a good time to ask questions
-- The course notes go through every step, with an optional profiling section at the end
-
-::: notes
-Say which half of the room uses which MODE before anyone starts training.
-:::
-
 ## The plan
 
 ::: {.flow}
-[Set up]{.step} [→]{.arrow} [Fine-tuning?]{.step} [→]{.arrow} [LoRA and QLoRA]{.step} [→]{.arrow} [Did it work?]{.step}
+[Set up]{.step} [→]{.arrow} [Fine-tuning?]{.step} [→]{.arrow} [Base model]{.step} [→]{.arrow} [LoRA and QLoRA]{.step}
 :::
 
 ::: {.flow}
-[vLLM]{.step} [→]{.arrow} [Prompting]{.step} [→]{.arrow} [Headlines]{.step} [→]{.arrow} [Wrap up]{.step}
+[Did it work?]{.step} [→]{.arrow} [vLLM]{.step} [→]{.arrow} [Prompting]{.step} [→]{.arrow} [Headlines]{.step} [→]{.arrow} [Wrap up]{.step}
 :::
 
 <br>
@@ -59,7 +37,7 @@ Optional at the end: profiling with Nsight Systems
 
 ## Asking for a GPU
 
-![](assets/jupyterhub-flow.svg){fig-alt="Your browser connects to JupyterHub, which asks the Slurm scheduler for GPUs. Slurm starts JupyterLab on a compute node with the GPUs you asked for, which reads the shared project folder and writes to your own folder." width="100%"}
+![](assets/jupyterhub-flow.svg){fig-alt="Your browser connects to JupyterHub, which asks the Slurm scheduler for GPUs. Slurm starts JupyterLab on a compute node with the GPUs you asked for, which reads the shared course files in $PROJECTDIR/hpc-for-ai-2 and saves your work to $PROJECTDIR/$USER." width="100%"}
 
 ## Start your session
 
@@ -124,6 +102,31 @@ None of these are backed up
 
 [What does a base model do, and what will fine-tuning change?]{.section-question}
 
+## What fine-tuning is
+
+Fine-tuning starts from a model that has already been trained, and trains it a little further on a smaller, specific dataset
+
+::: {.cards}
+::: {.card}
+**Starts from**
+Mistral 7B, trained only to predict the next word
+:::
+::: {.card}
+**Trains on**
+3,200 Alpaca examples: an instruction, then its answer
+:::
+::: {.card}
+**Learns**
+To answer an instruction and stop, training under 1% of the parameters
+:::
+:::
+
+<br>
+
+::: {.muted .center}
+It needs far less data and compute than training from scratch, because the model keeps most of what it already knows
+:::
+
 ## A language model predicts the next token
 
 :::: {.columns}
@@ -147,7 +150,7 @@ parameters in Mistral 7B
 <br>
 
 ::: {.center}
-A base model only **continues** text. Answering a question is not a separate skill it has.
+A base model only **continues** text. It hasn't been trained to answer questions.
 :::
 
 ## Training, fine-tuning or RAG?
@@ -163,11 +166,17 @@ A base model only **continues** text. Answering a question is not a separate ski
 Try prompting first. Use RAG for missing facts. Fine-tune for a format, style or skill.
 :::
 
+# [03]{.section-number} What can the base model do? {background-color="#3d0251"}
+
+[What does the model do before any fine-tuning?]{.section-question}
+
 ## What can the base model do?
 
 ```{.python filename="hpc-for-ai-2.ipynb"}
-print(complete(base_model, "The capital of France is"))
-print(complete(base_model, "What is the capital of France?", max_new_tokens=80))
+streamer = TextStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
+
+inputs = tokenizer("What is the capital of France?", return_tensors="pt").to(base_model.device)
+base_model.generate(**inputs, max_new_tokens=80, streamer=streamer)
 ```
 
 <br>
@@ -180,7 +189,7 @@ Look at how each answer **ends**. Does it stop, or carry on and write a new `###
 Ask the room what the base model did with the direct question.
 :::
 
-# [03]{.section-number} Training with LoRA and QLoRA {background-color="#3d0251"}
+# [04]{.section-number} Training with LoRA and QLoRA {background-color="#3d0251"}
 
 [How do you fine-tune a 7-billion-parameter model on one GPU?]{.section-question}
 
@@ -201,26 +210,9 @@ About 117 GB
 :::
 :::
 
-## LoRA and QLoRA
+## LoRA: learn a small update
 
-:::: {.columns}
-::: {.column width="50%"}
-**LoRA**
-Freeze the model. Train two small matrices `A` and `B` beside each layer:
-
-`W + (alpha / r) × B A`
-
-With `r = 16`, about 128 times fewer values than a 4096 × 4096 layer
-:::
-::: {.column width="50%"}
-**QLoRA**
-The same, and also store the frozen weights in **4 bits** instead of 16
-
-Each weight is unpacked at every use: less memory, more compute
-:::
-::::
-
-<br>
+![](assets/lora-adapter.svg){fig-alt="The equation W = W0 + B A, drawn as matrices. W0 is the pretrained n by n weight matrix, 4096 by 4096, about 16.8 million values, and is frozen. Added to it is the product of two thin matrices: B, n rows by r columns, and A, r rows by n columns, with r = 16. Their product has the same n by n shape as W0, but only B and A are stored and trained: about 131,000 values, around 128 times fewer. In QLoRA, W0 is also stored in 4 bits." width="100%"}
 
 ::: {.muted .center}
 Only about 42 million of 7.3 billion parameters train: 0.58%
@@ -257,18 +249,18 @@ While it trains, talk through LoRA and QLoRA, and what the room's results table 
 <br>
 
 ::: {.good}
-A profile shows why: QLoRA's top GPU kernel unpacks 4-bit weights (18% of kernel time), and LoRA doesn't run it. About 10% more time for about 64% less memory.
+QLoRA is slower because it unpacks its 4-bit weights before every multiplication, which takes 18% of GPU time. It takes about 10% longer and uses about 64% less memory.
 :::
 
 ::: {.center}
-LoRA when the model fits. QLoRA when it doesn't.
+Use LoRA if the model fits in GPU memory, and QLoRA if it doesn't.
 :::
 
 ::: notes
 Re-run the whole room's results cell and compare it with this table.
 :::
 
-# [04]{.section-number} Did it work? {background-color="#3d0251"}
+# [05]{.section-number} Did it work? {background-color="#3d0251"}
 
 [Has the model learned to answer?]{.section-question}
 
@@ -276,9 +268,11 @@ Re-run the whole room's results cell and compare it with this table.
 
 ```{.python filename="hpc-for-ai-2.ipynb"}
 for question in QUESTIONS:
+    print("Q:", question, "\nBASE MODEL:")
     with model.disable_adapter():
-        print("Q:", question, "\nBASE MODEL:", ask(model, question))
-    print("\nFINE-TUNED MODEL:", ask(model, question))
+        ask(model, question)
+    print("FINE-TUNED MODEL:")
+    ask(model, question)
 ```
 
 ::: {.cards}
@@ -303,14 +297,14 @@ Add a question of your own to `QUESTIONS` and ask both models.
 
 Can you find a question where the fine-tuned model is clearly **worse**?
 
-It trained on 3,200 examples for 8 minutes: it learned a format, not new knowledge.
+It trained on 3,200 examples for 8 minutes, so it learned the question-and-answer format but no new facts.
 :::
 
-# [05]{.section-number} Faster inference with vLLM {background-color="#3d0251"}
+# [06]{.section-number} Faster inference with vLLM {background-color="#3d0251"}
 
 [How do we get answers fast enough to use in a program?]{.section-question}
 
-## vLLM's two tricks
+## How vLLM answers faster
 
 ::: {.cards}
 ::: {.card}
@@ -352,10 +346,20 @@ tuned_answers = llm.generate(prompts, settings, lora_request=adapter)
 <br>
 
 ::: {.good}
-Most of the gap is not faster arithmetic. With Transformers, Python launches every kernel, one question and one token at a time, and the GPU mostly waits.
+With Transformers, Python sends the GPU one small job at a time, for each question and each word, so the GPU spends most of its time waiting. vLLM sends the work in batches.
 :::
 
-# [06]{.section-number} Prompting from a program {background-color="#3d0251"}
+## What the GPU is doing
+
+![Transformers: GPU busy 12% of the time, with gaps while Python launches the next kernel](assets/nsys-generate-hf.png){fig-alt="Nsight Systems timeline of about 2 milliseconds of the Transformers generate-hf run. The GPU kernel row shows short, sparse bars with gaps between them, while the CUDA API row underneath, on the Python thread, is busy launching one kernel after another." height="200px"}
+
+![vLLM: GPU busy 73% of the time, with kernels back to back](assets/nsys-generate-vllm.png){fig-alt="Nsight Systems timeline of about 1 millisecond of the vLLM generate-vllm run, in the vLLM engine process. The kernel row is a solid line of matrix multiplication kernels running back to back, with almost no gaps." height="170px"}
+
+::: notes
+Screenshots of the generate-hf and generate-vllm Nsight reports (the cell they just ran), zoomed in to a couple of milliseconds. GPU busy = total kernel time ÷ elapsed time, over the whole cell. Point at the gaps in the top kernel row and the busy CUDA API row under it: Python launching kernels one at a time. With vLLM the kernels run back to back. How to record and read these is in the optional profiling section at the end.
+:::
+
+# [07]{.section-number} Prompting from a program {background-color="#3d0251"}
 
 [How do you use a model on a list of inputs, and trust what comes back?]{.section-question}
 
@@ -376,7 +380,7 @@ Give it the **whole list** at once, so vLLM can batch it
 ## Check every answer
 
 ::: {.flow}
-[Clean]{.step} [→]{.arrow} [Check]{.step} [→]{.arrow} [Retry failures]{.step} [→]{.arrow} [Give up: `None`]{.step .light}
+[Clean]{.step} [→]{.arrow} [Check]{.step} [→]{.arrow} [Retry failures]{.step} [→]{.arrow} [Mark as `None`]{.step .light}
 :::
 
 <br>
@@ -391,12 +395,12 @@ Lower case, first word, no punctuation
 Only the failures, with `temperature=0.7`
 :::
 ::: {.card}
-**Give up**
-Return `None` rather than guess, so you can count failures
+**Mark as `None`**
+Rather than guess, so you can count failures
 :::
 :::
 
-# [07]{.section-number} A research question {background-color="#3d0251"}
+# [08]{.section-number} A research question {background-color="#3d0251"}
 
 [Has each UK news outlet given more or less of its front page to the environment?]{.section-question}
 
@@ -423,7 +427,8 @@ headlines
 | | One at a time | All at once |
 |---|---|---|
 | Headlines | 50 | 29,823 |
-| Time per headline | 32 ms | 1.7 ms |
+| Time per headline | 28 ms | 1.7 ms |
+| GPU busy | 66% | 98% |
 
 <br>
 
@@ -439,7 +444,7 @@ Gather the inputs into a list and classify them in one call
 3. Change the definition in `CLASSIFY`, or use the base model (`lora_request=None`). How many labels change, and which do you trust more?
 :::
 
-# [08]{.section-number} Wrapping up {background-color="#3d0251"}
+# [09]{.section-number} Wrapping up {background-color="#3d0251"}
 
 [How far can we trust this?]{.section-question}
 
@@ -448,7 +453,7 @@ Gather the inputs into a list and classify them in one call
 ::: {.cards}
 ::: {.card}
 **The classifier**
-It learned a format, never what counts as "the environment"
+It was never taught what counts as "the environment"
 :::
 ::: {.card}
 **Lead stories only**
@@ -476,29 +481,6 @@ Share one copy of large model files in the project folder
 
 ::: {.good}
 Nothing on Isambard-AI is backed up: copy anything important somewhere safe
-:::
-
-## Optional: profiling with Nsight Systems
-
-:::: {.columns}
-::: {.column width="50%"}
-A profile records every GPU kernel
-
-**Kernel time ÷ elapsed time** = how busy the GPU was
-:::
-::: {.column width="50%"}
-| | GPU busy |
-|---|---|
-| Transformers `generate()` | 12% |
-| vLLM | 73% |
-| Headlines, all at once | 98% |
-:::
-::::
-
-<br>
-
-::: {.center}
-Section 9 of the notes: record your own, or read the supplied reports
 :::
 
 ## Where to go next

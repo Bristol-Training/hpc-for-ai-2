@@ -9,9 +9,9 @@ Allow a few weeks before the course for access. Allow an afternoon for the setup
 | Script | Makes | Time |
 |---|---|---|
 | `build-environment.sh` | `data/.venv` (PyTorch, Transformers, TRL, PEFT, bitsandbytes, vLLM); Mistral 7B v0.3 and Alpaca in `data/hf-cache`; `data/alpaca/train.parquet`; the **Fine-tuning + Nsight** kernel and `install-kernels.sh` in `data/kernels`. It checks that everything imports, can see the GPU and loads offline | About 30 min |
-| `headlines/hear_uk_headlines.py` | `uk_headlines.json` for section 7 (see `headlines/README.md`). It needs internet access, and a rebuild gives slightly different data, because The Hear's archive grows | About 1 hour |
+| `headlines/hear_uk_headlines.py` | `uk_headlines.json` for section 8 (see `headlines/README.md`). It needs internet access, and a rebuild gives slightly different data, because The Hear's archive grows | About 1 hour |
 | `dry-run/dry-run.sbatch <mode> publish` | Runs the whole notebook as a participant would; with `publish`, copies the trained adapter, `stats.json` and Nsight reports into `data/fallback/` | About 15 min per mode |
-| `profile-summary.sh` | Nothing: participants run it in section 9 to summarise a report | |
+| `profile-summary.sh` | Nothing: participants run it in section 10 to summarise a report | |
 
 ## Checklist
 

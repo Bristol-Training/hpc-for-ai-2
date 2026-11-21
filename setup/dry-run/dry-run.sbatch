@@ -40,7 +40,7 @@ rm -f "$W"/*.nsys-rep "$W"/*.sqlite
   | grep -v -E '^\[1/1\]|Capturing CUDA|Collecting data'
 STATUS=${PIPESTATUS[0]}
 
-echo "########## the section 9 reading commands, in a login shell"
+echo "########## the section 10 reading commands, in a login shell"
 REPO="$REPO" bash -l <<'TERM'
 module load cudatoolkit/24.11_12.6
 W=$PROJECTDIR/$USER/llm-fine-tuning
