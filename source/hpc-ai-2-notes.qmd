@@ -353,9 +353,13 @@ print(dataset[0]["text"])
 
 Before training anything, see what the model does on its own. It has read a vast amount of text, but it was only ever trained to predict the next word. It has never been taught to answer.
 
+The model reads and writes tokens, not text: its tokenizer converts between the two. Training puts texts of different lengths into one batch and pads the short ones, and Mistral has no padding token of its own, so we reuse its end-of-text token.
+
 Give it the start of a sentence. What comes back is a plausible continuation, which is not necessarily the fact you were hoping for. `TextStreamer` prints each word as soon as the model produces it, so you can watch the answer being written.
 
 ```{.python filename="hpc-for-ai-2.ipynb"}
+tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+tokenizer.pad_token = tokenizer.eos_token  # Mistral has no padding token
 base_model = AutoModelForCausalLM.from_pretrained(MODEL_ID, dtype=torch.bfloat16, device_map="cuda")
 streamer = TextStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)  # print words as they come
 
@@ -429,6 +433,8 @@ Usually it carries on. The base model was only trained to continue text, so it m
 [How do you fine-tune a 7-billion-parameter model on one GPU?]{.lead-question}
 
 ## How LoRA and QLoRA fit it on one GPU
+
+Fine-tuning takes a model that has already been trained and trains it a little further on a small, specific dataset: here, 3,200 Alpaca examples, so that it learns to answer instructions.
 
 Fine-tuning every weight in mixed precision with the AdamW optimiser costs about 16 bytes per parameter: the weights, their gradients, a 32-bit master copy and two optimiser values. For 7.3 billion parameters that is about 117 GB, more than the 96 GB on this GPU.
 

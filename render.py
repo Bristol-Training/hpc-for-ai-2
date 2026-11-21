@@ -47,7 +47,8 @@ def render_to(input_file, output, metadata=None):
 
 
 def check_notebook_matches_notes():
-    """Every notebook code block in the notes must match a cell in the notebook.
+    """Every notebook code block in the notes must match a cell in the notebook, and
+    every code cell in the notebook must appear in the notes.
 
     Code blocks headed `filename="hpc-for-ai-2.ipynb"` in the notes are copies of
     notebook cells. If you edit one, edit the other too.
@@ -67,7 +68,15 @@ def check_notebook_matches_notes():
         for block in missing:
             print("    " + block.splitlines()[0] + " ...")
         sys.exit("Update notebooks/hpc-for-ai-2.ipynb or source/" + NOTES + " so they match.")
-    print(f"Notebook check: all {len(blocks)} code blocks in the notes match the notebook.")
+    shown = {block.strip() for block in blocks}
+    unshown = [cell for cell in cells if cell not in shown]
+    if unshown:
+        print("\nThese notebook cells aren't shown in the notes:\n")
+        for cell in unshown:
+            print("    " + cell.splitlines()[0] + " ...")
+        sys.exit("Add them to source/" + NOTES + " so the notes show every cell.")
+    print(f"Notebook check: all {len(blocks)} code blocks in the notes match the notebook,")
+    print(f"and all {len(cells)} notebook cells are shown in the notes.")
 
 
 def main():

@@ -2792,17 +2792,20 @@ src: url(data:font/ttf;base64,AAEAAAAOAIAAAwBgQkFTRVT/bgMAAAFoAAAARkdERUaZK5kzAA
 <h1 data-number="3"><span class="header-section-number">3</span> What can the base model do?</h1>
 <p><span class="lead-question">What does the model do before any fine-tuning?</span></p>
 <p>Before training anything, see what the model does on its own. It has read a vast amount of text, but it was only ever trained to predict the next word. It has never been taught to answer.</p>
+<p>The model reads and writes tokens, not text: its tokenizer converts between the two. Training puts texts of different lengths into one batch and pads the short ones, and Mistral has no padding token of its own, so we reuse its end-of-text token.</p>
 <p>Give it the start of a sentence. What comes back is a plausible continuation, which is not necessarily the fact you were hoping for. <code>TextStreamer</code> prints each word as soon as the model produces it, so you can watch the answer being written.</p>
 <div class="code-with-filename">
 <div class="code-with-filename-file">
 <pre><strong>hpc-for-ai-2.ipynb</strong></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8" data-filename="hpc-for-ai-2.ipynb"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>base_model <span class="op">=</span> AutoModelForCausalLM.from_pretrained(MODEL_ID, dtype<span class="op">=</span>torch.bfloat16, device_map<span class="op">=</span><span class="st">&quot;cuda&quot;</span>)</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>streamer <span class="op">=</span> TextStreamer(tokenizer, skip_prompt<span class="op">=</span><span class="va">True</span>, skip_special_tokens<span class="op">=</span><span class="va">True</span>)  <span class="co"># print words as they come</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>inputs <span class="op">=</span> tokenizer(<span class="st">&quot;The capital of France is&quot;</span>, return_tensors<span class="op">=</span><span class="st">&quot;pt&quot;</span>).to(base_model.device)</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>output <span class="op">=</span> base_model.generate(<span class="op">**</span>inputs, max_new_tokens<span class="op">=</span><span class="dv">40</span>, do_sample<span class="op">=</span><span class="va">False</span>, streamer<span class="op">=</span>streamer,</span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>                             pad_token_id<span class="op">=</span>tokenizer.eos_token_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8" data-filename="hpc-for-ai-2.ipynb"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>tokenizer <span class="op">=</span> AutoTokenizer.from_pretrained(MODEL_ID)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>tokenizer.pad_token <span class="op">=</span> tokenizer.eos_token  <span class="co"># Mistral has no padding token</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>base_model <span class="op">=</span> AutoModelForCausalLM.from_pretrained(MODEL_ID, dtype<span class="op">=</span>torch.bfloat16, device_map<span class="op">=</span><span class="st">&quot;cuda&quot;</span>)</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>streamer <span class="op">=</span> TextStreamer(tokenizer, skip_prompt<span class="op">=</span><span class="va">True</span>, skip_special_tokens<span class="op">=</span><span class="va">True</span>)  <span class="co"># print words as they come</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>inputs <span class="op">=</span> tokenizer(<span class="st">&quot;The capital of France is&quot;</span>, return_tensors<span class="op">=</span><span class="st">&quot;pt&quot;</span>).to(base_model.device)</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>output <span class="op">=</span> base_model.generate(<span class="op">**</span>inputs, max_new_tokens<span class="op">=</span><span class="dv">40</span>, do_sample<span class="op">=</span><span class="va">False</span>, streamer<span class="op">=</span>streamer,</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>                             pad_token_id<span class="op">=</span>tokenizer.eos_token_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Now ask a direct question. A base model often treats a question as the start of a document rather than something to answer, so it may write more questions or repeat itself.</p>
 <div class="code-with-filename">
@@ -2899,6 +2902,7 @@ src: url(data:font/ttf;base64,AAEAAAAOAIAAAwBgQkFTRVT/bgMAAAFoAAAARkdERUaZK5kzAA
 <p><span class="lead-question">How do you fine-tune a 7-billion-parameter model on one GPU?</span></p>
 <section id="how-lora-and-qlora-fit-it-on-one-gpu" class="level2" data-number="4.1">
 <h2 data-number="4.1" class="anchored" data-anchor-id="how-lora-and-qlora-fit-it-on-one-gpu"><span class="header-section-number">4.1</span> How LoRA and QLoRA fit it on one GPU</h2>
+<p>Fine-tuning takes a model that has already been trained and trains it a little further on a small, specific dataset: here, 3,200 Alpaca examples, so that it learns to answer instructions.</p>
 <p>Fine-tuning every weight in mixed precision with the AdamW optimiser costs about 16 bytes per parameter: the weights, their gradients, a 32-bit master copy and two optimiser values. For 7.3 billion parameters that is about 117 GB, more than the 96 GB on this GPU.</p>
 <p><strong>LoRA</strong> freezes the model and learns a small update to each of its weight matrices, made from two small trainable matrices. Only those train. A layer’s weights <code>W</code> stay as they are, and small matrices <code>A</code> and <code>B</code> learn an update to them, so the layer behaves as if its weights were</p>
 <pre><code>W + (alpha / r) × B A</code></pre>
