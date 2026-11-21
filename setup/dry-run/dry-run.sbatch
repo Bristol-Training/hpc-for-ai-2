@@ -13,7 +13,7 @@
 #   sbatch --reservation=interactive setup/dry-run/dry-run.sbatch qlora fallback   # skip training
 #
 # Add `publish` after the mode to copy this run's adapter, stats.json and reports into
-# $PROJECTDIR/course/fallback/, replacing what is there:
+# data/fallback/ in this repository, replacing what is there:
 #
 #   sbatch --reservation=interactive setup/dry-run/dry-run.sbatch qlora publish
 #   sbatch --reservation=interactive setup/dry-run/dry-run.sbatch lora publish
@@ -27,16 +27,16 @@ shift
 PUBLISH=0; ARGS=()
 for a in "$@"; do [ "$a" = publish ] && PUBLISH=1 || ARGS+=("$a"); done
 REPO=${SLURM_SUBMIT_DIR:-$PWD}
-COURSE=$PROJECTDIR/course
+DATA=$REPO/data
 W=$PROJECTDIR/$USER/llm-fine-tuning
 [ -f "$REPO/notebooks/hpc-for-ai-2.ipynb" ] || { echo "Submit this from the top of the hpc-for-ai-2 repo"; exit 1; }
 if [ $PUBLISH = 1 ] && [ ${#ARGS[@]} -gt 0 ]; then echo "publish needs a full run, not fallback"; exit 1; fi
 
-bash "$COURSE/kernels/install-kernels.sh"
+bash "$DATA/kernels/install-kernels.sh"
 # Empty personal caches, as for a participant. Reports go to fresh files.
 rm -rf "$PROJECTDIR/$USER/.cache/vllm" "$PROJECTDIR/$USER/.cache/datasets"
 rm -f "$W"/*.nsys-rep "$W"/*.sqlite
-"$COURSE/.venv/bin/python" "$REPO/setup/dry-run/run_notebook.py" "$MODE" "${ARGS[@]}" 2>&1 \
+"$DATA/.venv/bin/python" "$REPO/setup/dry-run/run_notebook.py" "$MODE" "${ARGS[@]}" 2>&1 \
   | grep -v -E '^\[1/1\]|Capturing CUDA|Collecting data'
 STATUS=${PIPESTATUS[0]}
 
@@ -44,7 +44,7 @@ echo "########## the section 9 reading commands, in a login shell"
 REPO="$REPO" bash -l <<'TERM'
 module load cudatoolkit/24.11_12.6
 W=$PROJECTDIR/$USER/llm-fine-tuning
-cp -n $PROJECTDIR/course/fallback/reports/*.nsys-rep $W/
+cp -n "$REPO/data/fallback/reports/"*.nsys-rep $W/
 for r in slice-qlora slice-lora generate-hf generate-vllm classify-loop classify-batch; do
   bash "$REPO/setup/profile-summary.sh" $r
 done
@@ -52,7 +52,7 @@ TERM
 
 if [ $PUBLISH = 1 ]; then
   if [ "$STATUS" != 0 ]; then echo "Not publishing: the notebook run failed"; exit 1; fi
-  F=$COURSE/fallback
+  F=$DATA/fallback
   mkdir -p "$F/$MODE" "$F/reports"
   rm -rf "$F/$MODE/final"
   cp -r "$W/sft-output/$MODE/final" "$F/$MODE/final"

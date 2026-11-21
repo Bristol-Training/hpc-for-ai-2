@@ -189,7 +189,7 @@ The *kernel* is the Python environment your notebook runs in. We've made one esp
 1. **Install the course kernel.** Open a terminal (*File → New → Terminal*) and run the command below, then reload the browser page.
 
     ```{.bash filename="Terminal"}
-    bash $PROJECTDIR/course/kernels/install-kernels.sh
+    bash $PROJECTDIR/hpc-for-ai-2/data/kernels/install-kernels.sh
     ```
 
 2. **Work on your own copy of the notebook.** If everyone saves the shared one, each save overwrites someone else's.
@@ -206,9 +206,9 @@ The *kernel* is the Python environment your notebook runs in. We've made one esp
 | What | Where |
 |---|---|
 | Your results and profiles | `WORK_PATH`, which is `$PROJECTDIR/$USER/llm-fine-tuning` |
-| Model | Shared cache, `$PROJECTDIR/course/hf-cache` |
-| Datasets | `$PROJECTDIR/course/alpaca` and `$PROJECTDIR/course/headlines` |
-| A trained adapter and example profiles, in case you fall behind | `$PROJECTDIR/course/fallback` |
+| Model | Shared cache, `$PROJECTDIR/hpc-for-ai-2/data/hf-cache` |
+| Datasets | `$PROJECTDIR/hpc-for-ai-2/data/alpaca` and `$PROJECTDIR/hpc-for-ai-2/data/headlines` |
+| A trained adapter and example profiles, in case you fall behind | `$PROJECTDIR/hpc-for-ai-2/data/fallback` |
 
 The compute nodes can't connect to the internet, so the model and datasets were downloaded before the course. You can read the shared folder but not change it.
 
@@ -230,7 +230,7 @@ from trl import SFTConfig, SFTTrainer
 MODE = "qlora"  # "qlora" or "lora"
 MODEL_ID = "mistralai/Mistral-7B-v0.3"
 PROJECTDIR = os.environ["PROJECTDIR"]
-COURSE = f"{PROJECTDIR}/course"
+DATA = f"{PROJECTDIR}/hpc-for-ai-2/data"
 WORK_PATH = os.environ["WORK_PATH"]
 OUTPUT_DIR = f"{WORK_PATH}/sft-output/{MODE}"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -273,7 +273,7 @@ def free_gpu():
 :::
 
 ::: {#answer1 .callout-caution icon=false title='Answer' collapse="true"}
-1. The course project's folder. The shared course files are in `$PROJECTDIR/course`, and yours go in `$PROJECTDIR/$USER`.
+1. The course project's folder. The shared course files are in `$PROJECTDIR/hpc-for-ai-2`, and yours go in `$PROJECTDIR/$USER`.
 2. One GH200, with about 96 GB of memory (`nvidia-smi` shows it in MiB).
 3. **Fine-tuning + Nsight**. Any other kernel gives errors such as `No module named 'datasets'`.
 :::
@@ -338,7 +338,7 @@ Stanford Alpaca has about 52,000 instruction-following examples. Each is already
 Alpaca is for non-commercial use, so check the licence before reusing it. This copy was saved to the course folder before the session. (Online, it loads with `load_dataset("tatsu-lab/alpaca", split="train")`.)
 
 ```{.python filename="hpc-for-ai-2.ipynb"}
-dataset = load_dataset("parquet", data_files=f"{COURSE}/alpaca/train.parquet", split="train")
+dataset = load_dataset("parquet", data_files=f"{DATA}/alpaca/train.parquet", split="train")
 
 print(len(dataset), "examples")
 print(dataset[0]["text"])
@@ -523,7 +523,7 @@ Save the adapter. This writes only the small LoRA matrices, 84 MB for QLoRA or 1
 USE_FALLBACK = False  # True if you are behind or training failed
 
 if USE_FALLBACK:
-    ADAPTER = f"{COURSE}/fallback/{MODE}/final"
+    ADAPTER = f"{DATA}/fallback/{MODE}/final"
 else:
     ADAPTER = f"{OUTPUT_DIR}/final"
     trainer.save_model(ADAPTER)
@@ -829,7 +829,7 @@ The data comes from [The Hear](https://www.thehear.org), a nonprofit archive of 
 The file is a nested dictionary, `data[paper][year][title]`. We flatten it into one list.
 
 ```{.python filename="hpc-for-ai-2.ipynb"}
-with open(f"{COURSE}/headlines/uk_headlines.json") as f:
+with open(f"{DATA}/headlines/uk_headlines.json") as f:
     data = json.load(f)
 
 rows = [(paper, int(year), title, info["subtitle"])
@@ -1059,7 +1059,7 @@ Run `nsys` only from the terminal, not with `!nsys` in a notebook cell, because 
 To re-record a cell, run it again between `nsys start` and `nsys stop`. Training can't be re-run cheaply, so use the supplied slices if you missed it. Copy the supplied reports into your folder; `-n` keeps any you recorded yourself:
 
 ```{.bash filename="Terminal"}
-cp -n $PROJECTDIR/course/fallback/reports/*.nsys-rep $W/
+cp -n $PROJECTDIR/hpc-for-ai-2/data/fallback/reports/*.nsys-rep $W/
 ```
 
 ## Why is QLoRA slower? Read the profiles
@@ -1148,7 +1148,7 @@ Each experiment followed the same loop, and each answer came from looking, not g
 
 ::: {.content-hidden when-meta="attendee"}
 ::: {.callout-important icon=false title='Instructor notes'}
-Not part of the 2-hour timings. If there is time at the end, demonstrate it with the supplied reports in `$PROJECTDIR/course/fallback/reports`. *(Add the Nsight UI image to the timeline paragraph.)*
+Not part of the 2-hour timings. If there is time at the end, demonstrate it with the supplied reports in `$PROJECTDIR/hpc-for-ai-2/data/fallback/reports`. *(Add the Nsight UI image to the timeline paragraph.)*
 :::
 :::
 
@@ -1193,39 +1193,56 @@ The course runs in the training project, using the `interactive` reservation, wi
 
 **2. Shared files**
 
-Everything lives in the shared course folder, `$PROJECTDIR/course`, which participants can read but not change:
+Everything lives in one place: this repository, cloned into `$PROJECTDIR/hpc-for-ai-2`. The scripts in `setup/` fill its `data/` folder, which git ignores. Participants can read all of it but not change it.
 
 ```
-$PROJECTDIR/course/
-├── .venv/                  the course Python environment
-├── kernels/                the Fine-tuning + Nsight kernel and install-kernels.sh
-├── hf-cache/               Mistral 7B v0.3 and the Alpaca download
-├── alpaca/train.parquet    Alpaca, saved for offline loading
-├── headlines/              uk_headlines.json (see setup/headlines/)
-└── fallback/               lora/ and qlora/ trained adapters with stats.json, and reports/
+$PROJECTDIR/hpc-for-ai-2/
+├── notebooks/hpc-for-ai-2.ipynb    the notebook participants copy
+├── setup/                          the scripts below, and profile-summary.sh
+└── data/                           not in git
+    ├── .venv/                      the course Python environment
+    ├── kernels/                    the Fine-tuning + Nsight kernel and install-kernels.sh
+    ├── hf-cache/                   Mistral 7B v0.3 and the Alpaca download (about 28 GB)
+    ├── alpaca/train.parquet        Alpaca, saved for offline loading
+    ├── headlines/                  uk_headlines.json
+    └── fallback/                   lora/ and qlora/ trained adapters with stats.json, and reports/
 ```
 
-This repository is cloned separately, into `$PROJECTDIR/hpc-for-ai-2`, not inside the course folder. Participants copy the notebook from it and run `setup/profile-summary.sh` from it.
+::: {.callout-warning icon=false title='data/ is not in git'}
+`git clean -xdf`, or deleting and re-cloning the repository, deletes `data/` and everything in it. Update the course with `git pull`.
+:::
 
-Build the environment, download the model and dataset, and create the kernel, in a 1-GPU job (the import check at the end needs a GPU).
+Do these in order, from the top of the repository, over SSH on a login node. Each job runs in the `interactive` reservation, which allows one job per person at a time, so submit each when the one before has finished. `setup/README.md` has the same steps as a checklist.
 
-```{.bash filename="Terminal (login node)"}
-sbatch --nodes=1 --gpus=1 --time=01:00:00 --output=setup-%j.out setup/build-environment.sh
-```
+1. **Clone the repository** and let the project read it:
 
-Then:
+    ```{.bash filename="Terminal (login node)"}
+    git clone https://github.com/Bristol-Training/hpc-for-ai-2.git $PROJECTDIR/hpc-for-ai-2
+    cd $PROJECTDIR/hpc-for-ai-2
+    chmod -R g+rX,g-w .
+    ```
 
-- **Course repository:** `git clone https://github.com/Bristol-Training/hpc-for-ai-2.git $PROJECTDIR/hpc-for-ai-2`, then `chmod -R g+rX,g-w $PROJECTDIR/hpc-for-ai-2`. Keep it on the branch you are teaching from.
-- **Headlines:** put `uk_headlines.json` in `$PROJECTDIR/course/headlines/` (see `setup/headlines/README.md`).
-- **Fallback adapters and supplied reports:** `setup/dry-run/dry-run.sbatch` runs the whole notebook as a participant would, on the course kernel, and records the six reports for section 9. With `publish`, it copies the run's adapter, `stats.json` and reports into `fallback/`. Run it from the top of the repository, once in each mode (each takes about 15 minutes):
+    Keep it on the branch you are teaching from: participants copy the notebook from it.
+
+2. **Build the environment, model, dataset and kernel** (about 30 minutes). This builds the Python environment in `data/.venv`, downloads Mistral 7B and Alpaca into `data/hf-cache`, saves `data/alpaca/train.parquet`, checks it all loads offline, and writes the kernel and `install-kernels.sh` to `data/kernels`. It needs `uv` on your `PATH`.
+
+    ```{.bash filename="Terminal (login node)"}
+    sbatch --reservation=interactive --nodes=1 --gpus=1 --time=01:00:00 \
+           --output=setup-%j.out setup/build-environment.sh
+    ```
+
+3. **Add the headlines dataset:** put `uk_headlines.json` in `$PROJECTDIR/hpc-for-ai-2/data/headlines/` (see `setup/headlines/README.md` to rebuild it).
+
+4. **Make the fallback adapters and supplied reports.** `setup/dry-run/dry-run.sbatch` runs the whole notebook as a participant would, on the course kernel, and records the six reports for section 9. With `publish`, it copies the run's adapter, `stats.json` and reports into `data/fallback/`. Run it once in each mode (each takes about 15 minutes):
 
     ```{.bash filename="Terminal (login node)"}
     sbatch --reservation=interactive setup/dry-run/dry-run.sbatch qlora publish
     sbatch --reservation=interactive setup/dry-run/dry-run.sbatch lora publish
     ```
 
-    Only one job can run in the `interactive` reservation at a time, so submit the second when the first has finished. Re-run both whenever the training settings change, so the fallback matches the notebook.
-- **Permissions:** `chmod -R g+rX,g-w $PROJECTDIR/course`. Participants' own folders are `$PROJECTDIR/$USER`.
+    Re-run both whenever the training settings change, so the fallback matches the notebook.
+
+5. **Permissions:** `chmod -R g+rX,g-w $PROJECTDIR/hpc-for-ai-2` again, so the project can read everything the jobs made. Participants' own folders are `$PROJECTDIR/$USER`.
 
 **3. Dry run (essential)**
 

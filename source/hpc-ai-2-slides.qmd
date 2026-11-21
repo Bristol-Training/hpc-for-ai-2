@@ -91,7 +91,7 @@ Share your screen and go slowly. This is where most problems happen: no UNIX use
 In JupyterLab, go to **File → New → Terminal**
 
 ```{.bash filename="Terminal"}
-bash $PROJECTDIR/course/kernels/install-kernels.sh
+bash $PROJECTDIR/hpc-for-ai-2/data/kernels/install-kernels.sh
 
 cp $PROJECTDIR/hpc-for-ai-2/notebooks/hpc-for-ai-2.ipynb ~/
 ```
@@ -104,10 +104,11 @@ Reload the page, open your copy of `hpc-for-ai-2.ipynb`, and check the kernel in
 
 | | |
 |---|---|
+| Course files | `$PROJECTDIR/hpc-for-ai-2` |
+| Model | `data/hf-cache` |
+| Datasets | `data/alpaca`, `data/headlines` |
+| If you fall behind | `data/fallback` |
 | Your results | `$PROJECTDIR/$USER/llm-fine-tuning` |
-| Model | `$PROJECTDIR/course/hf-cache` |
-| Datasets | `$PROJECTDIR/course/alpaca`, `.../headlines` |
-| If you fall behind | `$PROJECTDIR/course/fallback` |
 
 <br>
 

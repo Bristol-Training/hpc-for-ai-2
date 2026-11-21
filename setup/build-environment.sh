@@ -10,29 +10,33 @@
 #                           participant can record a profile with `nsys start/stop`
 #                           from a JupyterHub terminal.
 #
-# Run once, as the instructor, in a GPU job (the import check at the end of step 1 needs a GPU):
-#   sbatch --nodes=1 --gpus=1 --time=01:00:00 --output=setup-%j.out setup/build-environment.sh
+# Everything goes in data/ inside this repository (git ignores it). Run once, as the
+# instructor, from the top of the repository, in a GPU job (the import check at the end
+# of step 1 needs a GPU):
+#   sbatch --reservation=interactive --nodes=1 --gpus=1 --time=01:00:00 \
+#          --output=setup-%j.out setup/build-environment.sh
 #
 # Participants must be members of the same project to read the shared files.
 
 set -euo pipefail
 
 # ---- Edit these -------------------------------------------------------------
-COURSE=${COURSE:-/projects/b6bf/course}
+# The shared data folder: data/ in the repository this job was submitted from.
+DATA=${DATA:-${SLURM_SUBMIT_DIR:-$PWD}/data}
 # Participants' own folders. Fixed rather than $PROJECTDIR, which points elsewhere for
 # anyone whose default project is not b6bf.
 USER_ROOT=/projects/b6bf
 MODEL_ID=mistralai/Mistral-7B-v0.3
 # -----------------------------------------------------------------------------
 
-mkdir -p "${COURSE}"/{kernels,hf-cache,alpaca}
+mkdir -p "${DATA}"/{kernels,hf-cache,alpaca}
 
 # 1. Python environment: the tutorial's training pins AND its vLLM pin in one place.
 #    vllm 0.24.0 requires exactly torch==2.11.0, the same version the training pins
 #    use, and trl 1.10.0 supports vllm 0.17-0.26. These resolve together on aarch64.
 #    Packages come from the CUDA 12.9 builds the tutorial uses for vLLM on Isambard.
-uv venv --clear --seed --python 3.12 "${COURSE}/.venv"
-source "${COURSE}/.venv/bin/activate"
+uv venv --clear --seed --python 3.12 "${DATA}/.venv"
+source "${DATA}/.venv/bin/activate"
 uv pip install \
   torch==2.11.0 \
   transformers==5.15.1 \
@@ -62,7 +66,7 @@ print('bitsandbytes', bitsandbytes.__version__, '| vllm', vllm.__version__)
 # 2. Pre-download the model and the dataset into the shared, read-only course folder,
 #    so nobody downloads anything on the day. Both are ungated: no Hugging Face login.
 #    Mistral also ships its weights in a second, original format: skip that copy.
-export HF_HUB_CACHE="${COURSE}/hf-cache"
+export HF_HUB_CACHE="${DATA}/hf-cache"
 hf download "${MODEL_ID}" --exclude "consolidated*"
 hf download tatsu-lab/alpaca --repo-type dataset
 
@@ -73,13 +77,13 @@ hf download tatsu-lab/alpaca --repo-type dataset
 HF_HUB_OFFLINE=1 python -c "
 import glob
 from datasets import load_dataset
-files = glob.glob('${COURSE}/hf-cache/datasets--tatsu-lab--alpaca/snapshots/*/data/train-*.parquet')
-load_dataset('parquet', data_files=files, split='train').to_parquet('${COURSE}/alpaca/train.parquet')
+files = glob.glob('${DATA}/hf-cache/datasets--tatsu-lab--alpaca/snapshots/*/data/train-*.parquet')
+load_dataset('parquet', data_files=files, split='train').to_parquet('${DATA}/alpaca/train.parquet')
 "
 TEST_CACHE=$(mktemp -d)
 HF_HUB_OFFLINE=1 HF_DATASETS_CACHE="${TEST_CACHE}" python -c "
 from datasets import load_dataset
-ds = load_dataset('parquet', data_files='${COURSE}/alpaca/train.parquet', split='train')
+ds = load_dataset('parquet', data_files='${DATA}/alpaca/train.parquet', split='train')
 print('Offline load of the course copy works:', len(ds), 'examples')
 "
 rm -rf "${TEST_CACHE}"
@@ -100,7 +104,7 @@ echo "Using ${NSYS}: $(${NSYS} --version)"
 echo "CUDA toolkit: ${CUDA_TOOLKIT:-not found}"
 
 # 4. Start-up script for the kernel. Jupyter passes the connection file as $1.
-cat > "${COURSE}/kernels/start-kernel.sh" << EOF
+cat > "${DATA}/kernels/start-kernel.sh" << EOF
 #!/bin/bash
 export USER=\${USER:-\$(id -un)}
 # Participants' files: readable by the project, changeable only by their owner.
@@ -108,7 +112,7 @@ umask 022
 # A TMPDIR inherited from the login node may not exist here, and Nsight crashes on it.
 [ -d "\${TMPDIR:-/tmp}" ] && [ -w "\${TMPDIR:-/tmp}" ] || export TMPDIR=/tmp
 # Shared and read-only: the downloaded model and dataset files.
-export HF_HUB_CACHE="${COURSE}/hf-cache"
+export HF_HUB_CACHE="${DATA}/hf-cache"
 export HF_HUB_OFFLINE=1
 # Personal and writable: the prepared dataset and the trainer's tokenised copy.
 export HF_DATASETS_CACHE="${USER_ROOT}/\${USER}/.cache/datasets"
@@ -122,7 +126,7 @@ if [ -n "${CUDA_TOOLKIT}" ]; then
   export CPATH="${CUDA_CPATH}\${CPATH:+:\${CPATH}}"
 fi
 # vLLM compiles kernels on first start with tools from the course environment (ninja).
-export PATH="${COURSE}/.venv/bin:\${PATH}"
+export PATH="${DATA}/.venv/bin:\${PATH}"
 export CC=/usr/bin/gcc-13
 export CXX=/usr/bin/g++-13
 # Keep vLLM's compiled-kernel cache personal, since the shared folder is read-only.
@@ -155,7 +159,7 @@ if [ "\${WITH_NSYS:-0}" = "1" ]; then
   if ! flock -w 30 9; then
     echo "start-kernel: the previous Nsight kernel did not stop; this one runs without profiling" >&2
     exec 9>&-
-    exec "${COURSE}/.venv/bin/python" -m ipykernel_launcher -f "\$1"
+    exec "${DATA}/.venv/bin/python" -m ipykernel_launcher -f "\$1"
   fi
   for _ in \$(seq 30); do
     "${NSYS}" sessions list 2>/dev/null | grep -qw "nb-\${USER}" || break
@@ -173,19 +177,19 @@ if [ "\${WITH_NSYS:-0}" = "1" ]; then
   # graphs: follow child processes, and show each kernel inside the graphs.
   exec "${NSYS}" launch --session="nb-\${USER}" --trace=cuda,nvtx --cuda-memory-usage=true \\
        --trace-fork-before-exec=true --cuda-graph-trace=node \\
-       "${COURSE}/.venv/bin/python" -m ipykernel_launcher -f "\$1"
+       "${DATA}/.venv/bin/python" -m ipykernel_launcher -f "\$1"
 else
-  exec "${COURSE}/.venv/bin/python" -m ipykernel_launcher -f "\$1"
+  exec "${DATA}/.venv/bin/python" -m ipykernel_launcher -f "\$1"
 fi
 EOF
-chmod 755 "${COURSE}/kernels/start-kernel.sh"
+chmod 755 "${DATA}/kernels/start-kernel.sh"
 
 # 5. The kernel spec that participants link into ~/.local/share/jupyter/kernels/.
-mkdir -p "${COURSE}/kernels/finetune-nsys"
+mkdir -p "${DATA}/kernels/finetune-nsys"
 
-cat > "${COURSE}/kernels/finetune-nsys/kernel.json" << EOF
+cat > "${DATA}/kernels/finetune-nsys/kernel.json" << EOF
 {
-  "argv": ["${COURSE}/kernels/start-kernel.sh", "{connection_file}"],
+  "argv": ["${DATA}/kernels/start-kernel.sh", "{connection_file}"],
   "display_name": "Fine-tuning + Nsight",
   "language": "python",
   "env": {"WITH_NSYS": "1"}
@@ -194,20 +198,20 @@ EOF
 
 # 6. What participants run once to see the kernel in JupyterLab. A link, not a copy,
 #    so any later change to the shared kernel reaches everyone.
-cat > "${COURSE}/kernels/install-kernels.sh" << EOF
+cat > "${DATA}/kernels/install-kernels.sh" << EOF
 #!/bin/bash
 # Make the course kernel appear in your JupyterLab kernel menu. Safe to run again.
 set -e
 mkdir -p ~/.local/share/jupyter/kernels
 rm -rf ~/.local/share/jupyter/kernels/finetune ~/.local/share/jupyter/kernels/finetune-nsys
-ln -s "${COURSE}/kernels/finetune-nsys" ~/.local/share/jupyter/kernels/finetune-nsys
+ln -s "${DATA}/kernels/finetune-nsys" ~/.local/share/jupyter/kernels/finetune-nsys
 echo "Installed the Fine-tuning + Nsight kernel. Reload JupyterLab to see it."
 EOF
-chmod 755 "${COURSE}/kernels/install-kernels.sh"
+chmod 755 "${DATA}/kernels/install-kernels.sh"
 
 # 7. Let everyone in the project read and run it. Nothing shared is writable.
-chmod -R g+rX,g-w "${COURSE}"
+chmod -R g+rX,g-w "${DATA}"
 
 echo
 echo "Done. Participants run once, in a JupyterHub terminal:"
-echo "  bash ${COURSE}/kernels/install-kernels.sh"
+echo "  bash ${DATA}/kernels/install-kernels.sh"

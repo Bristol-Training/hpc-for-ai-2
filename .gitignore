@@ -15,3 +15,8 @@ source/*.html
 
 # Dry-run job logs (setup/dry-run/dry-run.sbatch)
 dry-run-*.out
+
+# Shared course data, made by setup/build-environment.sh and setup/dry-run/ (not in git)
+data/
+# Build job logs (setup/build-environment.sh)
+setup-*.out
